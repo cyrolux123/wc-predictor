@@ -1,0 +1,20 @@
+# WC2026 Match Predictor – requirements.txt (v3)
+#
+# Python >= 3.10 required (uses match/case and 3.10+ type hints)
+#
+# Install with:
+#   pip install -r requirements.txt
+
+streamlit>=1.35.0
+python-dotenv>=1.0.0
+
+# Groq LLM via LangChain
+langchain-groq>=0.1.9
+langchain-core>=0.3.0
+
+# LangGraph ReAct agent (preferred over legacy langchain agent)
+langgraph>=0.2.0
+langchain>=0.3.0
+
+# DuckDuckGo search — use the renamed package (eliminates RuntimeWarning)
+ddgs>=6.0.0
