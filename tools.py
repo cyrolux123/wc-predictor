@@ -259,18 +259,10 @@ def get_team_rating(team_name: str) -> str:
             press, setpiece, depth = DEFAULT_PRESS, DEFAULT_SETPIECE, DEFAULT_DEPTH
         return (
             f"Team: {team_name}\n"
-            f"  Overall Elo:          {elo}\n"
-            f"  Attack rating:        {att:.2f}  (>1.0 = above-average scorer)\n"
-            f"  Defence rating:       {dfe:.2f}  (>1.0 = below-average conceder)\n"
-            f"  Tactical style:       {tactic}\n"
-            f"  Press intensity:      {press:.2f}  (0=low, 1=gegenpressing)\n"
-            f"  Set-piece threat:     {setpiece:.2f}  (0=low, 1=high)\n"
-            f"  Squad depth baseline: {depth:.2f}  (reduce 0.08 per key absent player)\n"
-            f"\n  AGENT INSTRUCTIONS:\n"
-            f"    - Do NOT adjust attack/defence ratings; those are structural.\n"
-            f"    - Adjust Elo +/-10-60 pts via form, injuries, suspensions.\n"
-            f"    - Derive squad_depth_score = {depth:.2f} - (0.08 x starters_absent).\n"
-            f"    - Note press_intensity for Step 6 tactical matchup analysis."
+            f"  Elo: {elo} | Attack: {att:.2f} | Defence: {dfe:.2f}\n"
+            f"  Style: {tactic}\n"
+            f"  Press: {press:.2f} | Set-piece: {setpiece:.2f} | Depth: {depth:.2f}\n"
+            f"  (Adjust Elo +/-10-60 via form/injuries. depth_score = {depth:.2f} - 0.08*starters_absent.)"
         )
     return (
         f"Team '{team_name}' not in baseline table.\n"
@@ -393,12 +385,9 @@ def get_form_momentum(
         narrative = "Poor form — struggling; apply negative Elo adjustment."
 
     return (
-        f"Form Momentum Analysis\n"
-        f"  Raw results (newest first): {results_string}\n"
-        f"  Decay factor per game: {weight_decay}\n\n"
-        f"  Breakdown:\n" + "\n".join(details) + "\n\n"
-        f"  Momentum score (normalised): {momentum:.3f}\n"
-        f"  Recommended Elo adjustment:  {'+' if elo_adj >= 0 else ''}{elo_adj} pts\n"
+        f"Form Momentum: {results_string}\n"
+        f"  Momentum score: {momentum:.3f}\n"
+        f"  Recommended Elo adjustment: {'+' if elo_adj >= 0 else ''}{elo_adj} pts\n"
         f"  Assessment: {narrative}"
         f"{inactivity_note}"
     )
@@ -806,38 +795,31 @@ def predict_match(
             momentum_edge=momentum_edge,
         )
         ko_section = (
-            f"\n  KNOCKOUT ADVANCEMENT (100,000 simulations):\n"
-            f"    {team_a} advances:    {ko['p_adv_a']*100:.1f}%\n"
-            f"    {team_b} advances:    {ko['p_adv_b']*100:.1f}%\n"
-            f"    Goes to Extra Time:  {ko['p_aet']*100:.1f}%\n"
-            f"    Goes to Penalties:   {ko['p_penalties']*100:.1f}%\n"
-            f"    (Penalty model: 30% Elo edge retained + "
-            f"{momentum_edge*100:+.1f}% depth/momentum edge)\n"
+            f"KNOCKOUT ADVANCEMENT (100k sims): "
+            f"{team_a}: {ko['p_adv_a']*100:.1f}% | "
+            f"{team_b}: {ko['p_adv_b']*100:.1f}% | "
+            f"AET: {ko['p_aet']*100:.1f}% | "
+            f"Pens: {ko['p_penalties']*100:.1f}%\n"
         )
 
     # -- 13. Fatigue summary --------------------------------------------------
     fatigue_section = ""
     if fatigue_a > 0 or fatigue_b > 0:
         fatigue_section = (
-            f"\n  FATIGUE / TRAVEL PENALTIES APPLIED:\n"
-            f"    {team_a}: -{fatigue_a:.0f} Elo  "
-            f"(rest={rest_days_a}d, travel={travel_hours_a:.1f}h)\n"
-            f"    {team_b}: -{fatigue_b:.0f} Elo  "
-            f"(rest={rest_days_b}d, travel={travel_hours_b:.1f}h)\n"
+            f"FATIGUE: {team_a} -{fatigue_a:.0f} Elo (rest={rest_days_a}d travel={travel_hours_a:.1f}h) | "
+            f"{team_b} -{fatigue_b:.0f} Elo (rest={rest_days_b}d travel={travel_hours_b:.1f}h)\n"
         )
 
     # -- 14. Altitude / humidity notes ----------------------------------------
     conditions_note = ""
     if altitude_m >= 1000:
         conditions_note += (
-            f"\n  ALTITUDE: {altitude_m}m -> goals suppressed by "
-            f"{int((1 - alt_factor) * 100)}%"
+            f"ALTITUDE: {altitude_m}m -> goals -{int((1 - alt_factor) * 100)}% "
         )
     if abs(venue_humidity - 0.50) > 0.15:
-        direction = "raised" if venue_humidity > 0.50 else "reduced"
+        direction = "+" if venue_humidity > 0.50 else "-"
         conditions_note += (
-            f"\n  HUMIDITY: {venue_humidity:.0%} -> xG {direction} by "
-            f"{abs(venue_humidity - 0.50) * 4:.1f}%"
+            f"HUMIDITY: {venue_humidity:.0%} -> xG {direction}{abs(venue_humidity - 0.50) * 4:.1f}%"
         )
 
     # -- 15. Predicted winner -------------------------------------------------
@@ -848,13 +830,11 @@ def predict_match(
     else:
         winner = "Draw most likely"
 
-    # -- 16. Scoreline block --------------------------------------------------
+    # -- 16. Scoreline block (top 3 only) -------------------------------------
     scoreline_block = ""
-    for rank, (prob, g_a, g_b) in enumerate(top8, 1):
-        bar = "#" * max(1, int(prob * 130))
+    for rank, (prob, g_a, g_b) in enumerate(top8[:3], 1):
         scoreline_block += (
-            f"    #{rank}  {team_a} {g_a}-{g_b} {team_b}  "
-            f"{prob*100:5.1f}%  {bar}\n"
+            f"    #{rank}  {team_a} {g_a}-{g_b} {team_b}  {prob*100:5.1f}%\n"
         )
 
     # -- 17. Confidence label -------------------------------------------------
@@ -876,35 +856,27 @@ def predict_match(
         bet_note = "Statistical implication: Clear favourite; consistent with >65% win rate."
 
     report = (
-        f"╔══════════════════════════════════════════════════════════════╗\n"
-        f"  WC2026 PREDICTION v5: {team_a} vs {team_b} [{match_type.upper()}]\n"
-        f"╠══════════════════════════════════════════════════════════════╣\n"
-        f"\n  PREDICTED OUTCOME: {winner}\n"
+        f"WC2026 PREDICTION: {team_a} vs {team_b} [{match_type.upper()}]\n"
+        f"PREDICTED OUTCOME: {winner}\n"
         f"{conditions_note}\n"
         f"{fatigue_section}"
-        f"\n  WIN PROBABILITIES (90 min, post-fatigue/venue/depth):\n"
-        f"    {team_a}:  {win_a*100:.1f}%  [90% CI: {wa_lo*100:.0f}%-{wa_hi*100:.0f}%]\n"
-        f"    Draw:          {draw*100:.1f}%  [90% CI: {dr_lo*100:.0f}%-{dr_hi*100:.0f}%]\n"
-        f"    {team_b}:  {win_b*100:.1f}%  [90% CI: {wb_lo*100:.0f}%-{wb_hi*100:.0f}%]\n"
-        f"\n  MODEL xG:  {team_a}: {lam_a:.2f}   {team_b}: {lam_b:.2f}\n"
-        f"     Components: Elo(sigmoidal) x Att x Def x Venue x Tactics x\n"
-        f"                 Press x SetPiece x Depth x Rest x Humidity\n"
+        f"WIN PROBABILITIES (90 min, CI):\n"
+        f"  {team_a}: {win_a*100:.1f}% [{wa_lo*100:.0f}-{wa_hi*100:.0f}%]  "
+        f"Draw: {draw*100:.1f}% [{dr_lo*100:.0f}-{dr_hi*100:.0f}%]  "
+        f"{team_b}: {win_b*100:.1f}% [{wb_lo*100:.0f}-{wb_hi*100:.0f}%]\n"
+        f"MODEL xG: {team_a}: {lam_a:.2f}  {team_b}: {lam_b:.2f}\n"
         f"{xg_warning}\n"
-        f"\n  TOP 8 SCORELINES  (Dixon-Coles corrected, rho={rho}):\n"
+        f"TOP SCORELINES (rho={rho}):\n"
         f"{scoreline_block}"
         f"{ko_section}"
-        f"\n  CONFIDENCE: {conf}\n"
+        f"CONFIDENCE: {conf}\n"
         f"  {bet_note}\n"
-        f"     (Bootstrapped range: +/-45 Elo Gaussian perturbation, 2,000 samples)\n"
-        f"\n  PARAMETERS USED:\n"
-        f"    Elo (final): {team_a}={rating_a_adj:.0f}  {team_b}={rating_b_adj:.0f}\n"
-        f"    Lambda:  a={lam_a:.3f}  b={lam_b:.3f} | "
-        f"Venue={venue_city.title()} Alt={altitude_m}m  Hum={venue_humidity:.0%} | "
-        f"Depth: a={squad_depth_a:.2f}  b={squad_depth_b:.2f}\n"
-        f"    Press: a={press_intensity_a:.2f} b={press_intensity_b:.2f} | "
-        f"Set-piece: a={set_piece_a:.2f} b={set_piece_b:.2f} | "
-        f"Ref={ref_card_rate:.2f}\n"
-        f"\n  Model: Dixon-Coles Poisson v5 | xG: 10-factor sigmoidal | MC 100k sims\n"
-        f"╚══════════════════════════════════════════════════════════════╝"
+        f"PARAMETERS: Elo: {team_a}={rating_a_adj:.0f} {team_b}={rating_b_adj:.0f} | "
+        f"Lambda: a={lam_a:.3f} b={lam_b:.3f} | "
+        f"Venue={venue_city.title()} Alt={altitude_m}m Hum={venue_humidity:.0%} | "
+        f"Depth: a={squad_depth_a:.2f} b={squad_depth_b:.2f} | "
+        f"Press: a={press_intensity_a:.2f} b={press_intensity_b:.2f} | "
+        f"SetPiece: a={set_piece_a:.2f} b={set_piece_b:.2f}\n"
+        f"Model: Dixon-Coles v5 | MC 100k sims"
     )
     return report

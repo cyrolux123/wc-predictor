@@ -62,16 +62,14 @@ with st.sidebar:
     model = st.selectbox(
         "LLM Model",
         [
-            "openai/gpt-oss-120b",
-            "llama-3.1-70b-versatile",
             "llama-3.1-8b-instant",
+            "llama-3.3-70b-versatile",
             "qwen/qwen3-32b",
         ],
         index=0,
         help=(
-            "llama-3.3-70b-versatile gives the best research quality and "
-            "tool-call reliability. Use 8b-instant only for speed testing. "
-            "mixtral-8x7b is a fast mid-tier option."
+            "llama-3.1-8b-instant has a much higher free-tier TPM limit "
+            "and is recommended to avoid 413 token-limit errors."
         ),
     )
 
@@ -162,7 +160,7 @@ with st.sidebar:
 # ---------------------------------------------------------------------------
 st.title("WC2026 Agentic Match Predictor")
 st.caption(
-    "LangGraph ReAct agent · Groq LLM (llama-3.3-70b) · "
+    "LangGraph ReAct agent · Groq LLM (llama-3.1-8b-instant) · "
     "DuckDuckGo real-time search · Dixon-Coles Poisson model (v5) · "
     "9-step analytical workflow"
 )
@@ -257,7 +255,7 @@ if final_input:
                 agent = build_agent(temperature=temperature, model=model)
                 bot_response = run_agent(
                     agent,
-                    [(u, b) for u, b, _ in st.session_state.history],
+                    [(u, b) for u, b, _ in st.session_state.history[-2:]],
                     final_input,
                 )
             except Exception as exc:
